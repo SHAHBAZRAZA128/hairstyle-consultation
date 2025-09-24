@@ -8,17 +8,17 @@ async function fetchImageAsDataURLForEmail(imagePath: string, baseUrl: string): 
   try {
     const fullUrl = imagePath.startsWith('http') ? imagePath : `${baseUrl}${imagePath}`
     console.log('Fetching image for email:', fullUrl)
-    
+
     const response = await fetch(fullUrl)
     if (!response.ok) {
       console.error(`Failed to fetch image for email: ${response.status} ${response.statusText}`)
       return null
     }
-    
+
     const buffer = await response.arrayBuffer()
     const base64 = Buffer.from(buffer).toString('base64')
     const mimeType = response.headers.get('content-type') || 'image/jpeg'
-    
+
     return `data:${mimeType};base64,${base64}`
   } catch (error) {
     console.error('Error fetching image for email:', error)
@@ -28,7 +28,7 @@ async function fetchImageAsDataURLForEmail(imagePath: string, baseUrl: string): 
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, dates, formData } = await request.json()
+    const { email, dates, formData, sendAdditionalEmail } = await request.json()
 
     if (!email || !dates || !Array.isArray(dates) || dates.length === 0) {
       return NextResponse.json(
@@ -60,13 +60,13 @@ export async function POST(request: NextRequest) {
       hairLength: formData.hairLength,
       personalStyle: formData.personalStyle
     }
-    
+
     const recommendation = getHairRecommendation(combination)
     const images = getAllRecommendationImages(combination)
-    
+
     // Get base URL for images
     const baseUrl = process.env.NEXTAUTH_URL || `https://${request.headers.get('host') || 'localhost:3000'}`
-    
+
     // Convert recommendation images to full URLs for email
     let imageUrls: string[] = []
     if (recommendation && images.length > 0) {
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     console.log('Base URL:', baseUrl)
     console.log('Number of image URLs:', imageUrls.length)
     console.log('Image URLs:', imageUrls)
-    
+
     // Test: Create a simple HTML snippet with one image to test
     if (imageUrls.length > 0) {
       const testHtml = `<div><h3>Test Image:</h3><img src="${imageUrls[0]}" style="width: 100px; height: 100px;" alt="test" /></div>`
@@ -173,8 +173,8 @@ export async function POST(request: NextRequest) {
               <h4 style="color: #ff7f50; margin-bottom: 15px; font-size: 16px;">Recommended Styles:</h4>
               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
                 ${imageUrls.map((imageUrl, index) => {
-                  const imageName = images[index]?.split('/').pop() || `style-${index + 1}`
-                  return `
+        const imageName = images[index]?.split('/').pop() || `style-${index + 1}`
+        return `
                     <div style="text-align: center; background: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 10px;">
                       <div style="width: 100%; height: 120px; border-radius: 8px; margin-bottom: 10px; border: 2px solid rgba(255, 127, 80, 0.3); overflow: hidden; background: rgba(255, 255, 255, 0.05);">
                         <img 
@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
                       <div style="font-size: 12px; color: rgba(255, 255, 255, 0.8);">${imageName.replace('.jpg', '')}</div>
                     </div>
                   `
-                }).join('')}
+      }).join('')}
               </div>
             </div>
             ` : `
@@ -258,6 +258,36 @@ export async function POST(request: NextRequest) {
     // Send email
     await transporter.sendMail(mailOptions)
 
+    if (sendAdditionalEmail) {
+      const mailOptionsDatesOnly = {
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: 'Your Selected Perfect Hair Days',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px; border-radius: 20px;">
+            <div style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border-radius: 15px; padding: 30px; margin-bottom: 30px;">
+              <h2 style="color: white; margin-bottom: 20px; font-size: 24px;">Selected Perfect Hair Days</h2>
+              <p style="color: rgba(255, 255, 255, 0.8); margin-bottom: 15px;">
+                Here are the dates you selected for your perfect hair days:
+              </p>
+              <div style="background: rgba(255, 255, 255, 0.1); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                <ul style="margin: 0; padding-left: 20px; color: white;">
+                  <li>${formattedDates}</li>
+                </ul>
+              </div>
+              <p style="color: rgba(255, 255, 255, 0.8); font-size: 14px;">
+                <strong>Total dates selected:</strong> ${dates.length}
+              </p>
+              <p style="color: rgba(255, 255, 255, 0.7); font-size: 12px; font-style: italic; margin-top: 15px;">
+                We'll send you a reminder 2 weeks before each date to consult or set an appointment.
+              </p>
+            </div>
+          </div>
+        `,
+      }
+
+      await transporter.sendMail(mailOptionsDatesOnly)
+    }
     return NextResponse.json(
       { message: 'Form submitted successfully' },
       { status: 200 }
