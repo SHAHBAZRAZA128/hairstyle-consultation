@@ -8,6 +8,8 @@ import 'react-calendar/dist/Calendar.css'
 import ImageGallery from './components/ImageGallery'
 import { getHairRecommendation, getAllRecommendationImages, type HairCombination } from './utils/hairRecommendations'
 import { fetchImageAsDataURL } from './utils/pdfImageLoader'
+import mkhLogo from '/public/mkh-logo.jpg';
+import Image from 'next/image'
 
 type ValuePiece = Date | null
 type Value = ValuePiece | [ValuePiece, ValuePiece]
@@ -179,271 +181,271 @@ export default function Home() {
   }
 
 
-const generatePDF = async () => {
-  setIsGeneratingPDF(true)
-  setMessage('')
+  const generatePDF = async () => {
+    setIsGeneratingPDF(true)
+    setMessage('')
 
-  try {
-    const pdf = new jsPDF('p', 'mm', 'a4')
-    const pageWidth = pdf.internal.pageSize.getWidth()
-    const pageHeight = pdf.internal.pageSize.getHeight()
-    const margin = 25
-    const contentWidth = pageWidth - (2 * margin)
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const margin = 25
+      const contentWidth = pageWidth - (2 * margin)
 
-    let yPosition = margin
+      let yPosition = margin
 
-    // ===== HEADER =====
-    pdf.setFillColor(255, 127, 80)
-    pdf.rect(0, 0, pageWidth, 40, 'F')
+      // ===== HEADER =====
+      pdf.setFillColor(255, 127, 80)
+      pdf.rect(0, 0, pageWidth, 40, 'F')
 
-    pdf.setFontSize(24).setTextColor(255, 255, 255).setFont('helvetica', 'bold')
-    const title = 'MKH Hair Color Analysis Report'
-    const titleWidth = pdf.getTextWidth(title)
-    pdf.text(title, (pageWidth - titleWidth) / 2, 25)
+      pdf.setFontSize(24).setTextColor(255, 255, 255).setFont('helvetica', 'bold')
+      const title = 'MKH Hair Color Analysis Report'
+      const titleWidth = pdf.getTextWidth(title)
+      pdf.text(title, (pageWidth - titleWidth) / 2, 25)
 
-    yPosition = 50
+      yPosition = 50
 
-    // ===== DATE =====
-    pdf.setFontSize(10).setTextColor(100, 100, 100).setFont('helvetica', 'normal')
-    const dateText = `Generated on: ${format(new Date(), 'EEEE, MMMM d, yyyy')}`
-    pdf.text(dateText, margin, yPosition)
-    yPosition += 20
-
-    // ===== PERSONAL INFORMATION =====
-    const personalInfoHeight = 50
-    pdf.setFillColor(245, 245, 245)
-    pdf.rect(margin - 5, yPosition - 5, contentWidth + 10, personalInfoHeight, 'F')
-    pdf.setDrawColor(255, 127, 80).setLineWidth(0.5)
-    pdf.rect(margin - 5, yPosition - 5, contentWidth + 10, personalInfoHeight, 'S')
-
-    pdf.setFontSize(14).setTextColor(255, 127, 80).setFont('helvetica', 'bold')
-    pdf.text('Personal Information', margin, yPosition)
-    yPosition += 12
-
-    pdf.setFontSize(10).setTextColor(50, 50, 50).setFont('helvetica', 'normal')
-    const personalInfo = [
-      `Name: ${formData.firstName} ${formData.lastName}`,
-      `Email: ${formData.email}`,
-      `Phone: ${formData.phone}`
-    ]
-    personalInfo.forEach((info: string) => {
-      pdf.text(info, margin, yPosition)
-      yPosition += 7
-    })
-    yPosition += 20
-
-    // ===== HAIR ANALYSIS =====
-    const hairAnalysisHeight = 100
-    pdf.setFillColor(245, 245, 245)
-    pdf.rect(margin - 5, yPosition - 5, contentWidth + 10, hairAnalysisHeight, 'F')
-    pdf.setDrawColor(255, 127, 80).setLineWidth(0.5)
-    pdf.rect(margin - 5, yPosition - 5, contentWidth + 10, hairAnalysisHeight, 'S')
-
-    pdf.setFontSize(14).setTextColor(255, 127, 80).setFont('helvetica', 'bold')
-    pdf.text('Hair Analysis', margin, yPosition)
-    yPosition += 12
-
-    pdf.setFontSize(10).setTextColor(50, 50, 50).setFont('helvetica', 'normal')
-    const hairAnalysis = [
-      `Natural Hair Color: ${formData.naturalHairColor || 'Not specified'}`,
-      `Skin Color: ${formData.skinColor || 'Not specified'}`,
-      `Eye Color: ${formData.eyeColor || 'Not specified'}`,
-      `Hair Texture: ${formData.hairTexture || 'Not specified'}`,
-      `Hair Length: ${formData.hairLength || 'Not specified'}`,
-      `Personal Style: ${formData.personalStyle || 'Not specified'}`,
-      `Maintenance: ${formData.hairMaintenance || 'Not specified'}`
-    ]
-    hairAnalysis.forEach((info: string) => {
-      pdf.text(info, margin, yPosition)
-      yPosition += 7
-    })
-    yPosition += 20
-
-    // ===== RECOMMENDATIONS =====
-    const combination: HairCombination = {
-      hairColor: formData.selectedHairColor,
-      hairLength: formData.hairLength,
-      personalStyle: formData.personalStyle
-    }
-
-    const recommendation = getHairRecommendation(combination)
-    const images = getAllRecommendationImages(combination)
-
-    if (recommendation) {
-      // ==== Calculate dynamic box height ====
-      let calcHeight = 0
-      calcHeight += 12 // title
-      calcHeight += 10 // sub-title
-      calcHeight += 7 // heading
-
-      const descLines: string[] = pdf.splitTextToSize(recommendation.description, contentWidth)
-      calcHeight += descLines.length * 5 + 5
-
-      calcHeight += 7 // heading
-      const careLines: string[] = pdf.splitTextToSize(recommendation.hairCare, contentWidth)
-      calcHeight += careLines.length * 5 + 5
-
-      calcHeight += 7 // heading
-      calcHeight += recommendation.maintenanceSchedule.length * 5
-
-      calcHeight += 20 // bottom padding
-
-      // If not enough space, shift to new page
-      if (yPosition + calcHeight > pageHeight - 40) {
-        pdf.addPage()
-        yPosition = margin
-      }
-
-      // Draw box
-      pdf.setFillColor(245, 245, 245)
-      pdf.rect(margin - 5, yPosition - 5, contentWidth + 10, calcHeight, 'F')
-      pdf.setDrawColor(255, 127, 80).setLineWidth(0.5)
-      pdf.rect(margin - 5, yPosition - 5, contentWidth + 10, calcHeight, 'S')
-
-      // Content inside box
-      pdf.setFontSize(14).setTextColor(255, 127, 80).setFont('helvetica', 'bold')
-      pdf.text('Personalized Hair Recommendations', margin, yPosition)
-      yPosition += 12
-
-      pdf.setFontSize(12).setTextColor(255, 127, 80).setFont('helvetica', 'bold')
-      pdf.text(recommendation.title, margin, yPosition)
-      yPosition += 10
-
-      // Treatments
-      pdf.setFontSize(10).setTextColor(255, 127, 80).setFont('helvetica', 'bold')
-      pdf.text('Recommended Treatments:', margin, yPosition)
-      yPosition += 7
-
-      pdf.setFont('helvetica', 'normal').setTextColor(50, 50, 50)
-      descLines.forEach((line: string) => {
-        pdf.text(line, margin, yPosition)
-        yPosition += 5
-      })
-      yPosition += 5
-
-      // Care Routine
-      pdf.setFont('helvetica', 'bold').setTextColor(255, 127, 80)
-      pdf.text('Hair Care Routine:', margin, yPosition)
-      yPosition += 7
-
-      pdf.setFont('helvetica', 'normal').setTextColor(50, 50, 50)
-      careLines.forEach((line: string) => {
-        pdf.text(line, margin, yPosition)
-        yPosition += 5
-      })
-      yPosition += 5
-
-      // Schedule
-      pdf.setFont('helvetica', 'bold').setTextColor(255, 127, 80)
-      pdf.text('Maintenance Schedule:', margin, yPosition)
-      yPosition += 7
-
-      pdf.setFont('helvetica', 'normal').setTextColor(50, 50, 50)
-      recommendation.maintenanceSchedule.forEach((schedule: string) => {
-        pdf.text(`• ${schedule}`, margin, yPosition)
-        yPosition += 5
-      })
-
+      // ===== DATE =====
+      pdf.setFontSize(10).setTextColor(100, 100, 100).setFont('helvetica', 'normal')
+      const dateText = `Generated on: ${format(new Date(), 'EEEE, MMMM d, yyyy')}`
+      pdf.text(dateText, margin, yPosition)
       yPosition += 20
 
-      // ==== Recommended Styles (images) ====
-      if (images.length > 0) {
-        if (yPosition > pageHeight - 100) {
+      // ===== PERSONAL INFORMATION =====
+      const personalInfoHeight = 50
+      pdf.setFillColor(245, 245, 245)
+      pdf.rect(margin - 5, yPosition - 5, contentWidth + 10, personalInfoHeight, 'F')
+      pdf.setDrawColor(255, 127, 80).setLineWidth(0.5)
+      pdf.rect(margin - 5, yPosition - 5, contentWidth + 10, personalInfoHeight, 'S')
+
+      pdf.setFontSize(14).setTextColor(255, 127, 80).setFont('helvetica', 'bold')
+      pdf.text('Personal Information', margin, yPosition)
+      yPosition += 12
+
+      pdf.setFontSize(10).setTextColor(50, 50, 50).setFont('helvetica', 'normal')
+      const personalInfo = [
+        `Name: ${formData.firstName} ${formData.lastName}`,
+        `Email: ${formData.email}`,
+        `Phone: ${formData.phone}`
+      ]
+      personalInfo.forEach((info: string) => {
+        pdf.text(info, margin, yPosition)
+        yPosition += 7
+      })
+      yPosition += 20
+
+      // ===== HAIR ANALYSIS =====
+      const hairAnalysisHeight = 100
+      pdf.setFillColor(245, 245, 245)
+      pdf.rect(margin - 5, yPosition - 5, contentWidth + 10, hairAnalysisHeight, 'F')
+      pdf.setDrawColor(255, 127, 80).setLineWidth(0.5)
+      pdf.rect(margin - 5, yPosition - 5, contentWidth + 10, hairAnalysisHeight, 'S')
+
+      pdf.setFontSize(14).setTextColor(255, 127, 80).setFont('helvetica', 'bold')
+      pdf.text('Hair Analysis', margin, yPosition)
+      yPosition += 12
+
+      pdf.setFontSize(10).setTextColor(50, 50, 50).setFont('helvetica', 'normal')
+      const hairAnalysis = [
+        `Natural Hair Color: ${formData.naturalHairColor || 'Not specified'}`,
+        `Skin Color: ${formData.skinColor || 'Not specified'}`,
+        `Eye Color: ${formData.eyeColor || 'Not specified'}`,
+        `Hair Texture: ${formData.hairTexture || 'Not specified'}`,
+        `Hair Length: ${formData.hairLength || 'Not specified'}`,
+        `Personal Style: ${formData.personalStyle || 'Not specified'}`,
+        `Maintenance: ${formData.hairMaintenance || 'Not specified'}`
+      ]
+      hairAnalysis.forEach((info: string) => {
+        pdf.text(info, margin, yPosition)
+        yPosition += 7
+      })
+      yPosition += 20
+
+      // ===== RECOMMENDATIONS =====
+      const combination: HairCombination = {
+        hairColor: formData.selectedHairColor,
+        hairLength: formData.hairLength,
+        personalStyle: formData.personalStyle
+      }
+
+      const recommendation = getHairRecommendation(combination)
+      const images = getAllRecommendationImages(combination)
+
+      if (recommendation) {
+        // ==== Calculate dynamic box height ====
+        let calcHeight = 0
+        calcHeight += 12 // title
+        calcHeight += 10 // sub-title
+        calcHeight += 7 // heading
+
+        const descLines: string[] = pdf.splitTextToSize(recommendation.description, contentWidth)
+        calcHeight += descLines.length * 5 + 5
+
+        calcHeight += 7 // heading
+        const careLines: string[] = pdf.splitTextToSize(recommendation.hairCare, contentWidth)
+        calcHeight += careLines.length * 5 + 5
+
+        calcHeight += 7 // heading
+        calcHeight += recommendation.maintenanceSchedule.length * 5
+
+        calcHeight += 20 // bottom padding
+
+        // If not enough space, shift to new page
+        if (yPosition + calcHeight > pageHeight - 40) {
           pdf.addPage()
           yPosition = margin
         }
 
-        // ADD EXTRA SPACE before heading
+        // Draw box
+        pdf.setFillColor(245, 245, 245)
+        pdf.rect(margin - 5, yPosition - 5, contentWidth + 10, calcHeight, 'F')
+        pdf.setDrawColor(255, 127, 80).setLineWidth(0.5)
+        pdf.rect(margin - 5, yPosition - 5, contentWidth + 10, calcHeight, 'S')
+
+        // Content inside box
+        pdf.setFontSize(14).setTextColor(255, 127, 80).setFont('helvetica', 'bold')
+        pdf.text('Personalized Hair Recommendations', margin, yPosition)
+        yPosition += 12
+
+        pdf.setFontSize(12).setTextColor(255, 127, 80).setFont('helvetica', 'bold')
+        pdf.text(recommendation.title, margin, yPosition)
         yPosition += 10
 
-        pdf.setFontSize(14).setTextColor(255, 127, 80).setFont('helvetica', 'bold')
-        pdf.text('Recommended Styles', margin, yPosition)
-        yPosition += 15
+        // Treatments
+        pdf.setFontSize(10).setTextColor(255, 127, 80).setFont('helvetica', 'bold')
+        pdf.text('Recommended Treatments:', margin, yPosition)
+        yPosition += 7
 
-        const imagesPerRow = 2
-        const imageWidth = (contentWidth - 10) / imagesPerRow
-        const imageHeight = 80
-        const imagesToProcess = images.slice(0, 4)
+        pdf.setFont('helvetica', 'normal').setTextColor(50, 50, 50)
+        descLines.forEach((line: string) => {
+          pdf.text(line, margin, yPosition)
+          yPosition += 5
+        })
+        yPosition += 5
 
-        for (let index = 0; index < imagesToProcess.length; index++) {
-          const imagePath = imagesToProcess[index]
-          const row = Math.floor(index / imagesPerRow)
-          const col = index % imagesPerRow
+        // Care Routine
+        pdf.setFont('helvetica', 'bold').setTextColor(255, 127, 80)
+        pdf.text('Hair Care Routine:', margin, yPosition)
+        yPosition += 7
 
-          if (row > 0 && col === 0) {
-            if (yPosition + imageHeight + 30 > pageHeight - 40) {
-              pdf.addPage()
-              yPosition = margin
-            } else {
-              yPosition += imageHeight + 30
-            }
-          }
+        pdf.setFont('helvetica', 'normal').setTextColor(50, 50, 50)
+        careLines.forEach((line: string) => {
+          pdf.text(line, margin, yPosition)
+          yPosition += 5
+        })
+        yPosition += 5
 
-          const xPos = margin + col * (imageWidth + 10)
-          const yPos = yPosition
+        // Schedule
+        pdf.setFont('helvetica', 'bold').setTextColor(255, 127, 80)
+        pdf.text('Maintenance Schedule:', margin, yPosition)
+        yPosition += 7
 
-          try {
-            const dataUrl = await fetchImageAsDataURL(imagePath)
-            if (dataUrl) {
-              const fmt = imagePath.toLowerCase().includes('.png') ? 'PNG' : 'JPEG'
-              pdf.addImage(dataUrl, fmt, xPos, yPos, imageWidth, imageHeight)
-            }
-          } catch {
-            pdf.setFillColor(240, 240, 240)
-            pdf.rect(xPos, yPos, imageWidth, imageHeight, 'FD')
-            pdf.setFontSize(8).setTextColor(150).text('Image failed to load', xPos + 5, yPos + imageHeight / 2)
-          }
-        }
-        yPosition += imageHeight + 30
-      }
-    }
-
-    // ===== SELECTED PERFECT HAIR DAYS =====
-    if (formData.selectedDates.length > 0) {
-      const lineHeight = 7
-      const totalLines = formData.selectedDates.length
-      const totalHeight = totalLines * lineHeight + 35
-
-      if (yPosition + totalHeight > pageHeight - 40) {
-        pdf.addPage()
-        yPosition = margin
-      }
-
-      pdf.setFillColor(245, 245, 245)
-      pdf.rect(margin - 5, yPosition - 5, contentWidth + 10, totalHeight, 'F')
-      pdf.setDrawColor(255, 127, 80).setLineWidth(0.5)
-      pdf.rect(margin - 5, yPosition - 5, contentWidth + 10, totalHeight, 'S')
-
-      pdf.setFontSize(14).setTextColor(255, 127, 80).setFont('helvetica', 'bold')
-      pdf.text('Selected Perfect Hair Days', margin, yPosition)
-      yPosition += 12
-
-      pdf.setFontSize(10).setTextColor(50, 50, 50).setFont('helvetica', 'normal')
-      formData.selectedDates
-        .sort((a, b) => a.getTime() - b.getTime())
-        .forEach((date: Date, index: number) => {
-          const dateText = `${index + 1}. ${format(date, 'EEEE, MMMM d, yyyy')}`
-          pdf.text(dateText, margin, yPosition)
-          yPosition += lineHeight
+        pdf.setFont('helvetica', 'normal').setTextColor(50, 50, 50)
+        recommendation.maintenanceSchedule.forEach((schedule: string) => {
+          pdf.text(`• ${schedule}`, margin, yPosition)
+          yPosition += 5
         })
 
-      yPosition += 5
-      pdf.setFontSize(9).setTextColor(100, 100, 100).setFont('helvetica', 'bold')
-      pdf.text(`Total dates selected: ${formData.selectedDates.length}`, margin, yPosition)
+        yPosition += 20
+
+        // ==== Recommended Styles (images) ====
+        if (images.length > 0) {
+          if (yPosition > pageHeight - 100) {
+            pdf.addPage()
+            yPosition = margin
+          }
+
+          // ADD EXTRA SPACE before heading
+          yPosition += 10
+
+          pdf.setFontSize(14).setTextColor(255, 127, 80).setFont('helvetica', 'bold')
+          pdf.text('Recommended Styles', margin, yPosition)
+          yPosition += 15
+
+          const imagesPerRow = 2
+          const imageWidth = (contentWidth - 10) / imagesPerRow
+          const imageHeight = 80
+          const imagesToProcess = images.slice(0, 4)
+
+          for (let index = 0; index < imagesToProcess.length; index++) {
+            const imagePath = imagesToProcess[index]
+            const row = Math.floor(index / imagesPerRow)
+            const col = index % imagesPerRow
+
+            if (row > 0 && col === 0) {
+              if (yPosition + imageHeight + 30 > pageHeight - 40) {
+                pdf.addPage()
+                yPosition = margin
+              } else {
+                yPosition += imageHeight + 30
+              }
+            }
+
+            const xPos = margin + col * (imageWidth + 10)
+            const yPos = yPosition
+
+            try {
+              const dataUrl = await fetchImageAsDataURL(imagePath)
+              if (dataUrl) {
+                const fmt = imagePath.toLowerCase().includes('.png') ? 'PNG' : 'JPEG'
+                pdf.addImage(dataUrl, fmt, xPos, yPos, imageWidth, imageHeight)
+              }
+            } catch {
+              pdf.setFillColor(240, 240, 240)
+              pdf.rect(xPos, yPos, imageWidth, imageHeight, 'FD')
+              pdf.setFontSize(8).setTextColor(150).text('Image failed to load', xPos + 5, yPos + imageHeight / 2)
+            }
+          }
+          yPosition += imageHeight + 30
+        }
+      }
+
+      // ===== SELECTED PERFECT HAIR DAYS =====
+      if (formData.selectedDates.length > 0) {
+        const lineHeight = 7
+        const totalLines = formData.selectedDates.length
+        const totalHeight = totalLines * lineHeight + 35
+
+        if (yPosition + totalHeight > pageHeight - 40) {
+          pdf.addPage()
+          yPosition = margin
+        }
+
+        pdf.setFillColor(245, 245, 245)
+        pdf.rect(margin - 5, yPosition - 5, contentWidth + 10, totalHeight, 'F')
+        pdf.setDrawColor(255, 127, 80).setLineWidth(0.5)
+        pdf.rect(margin - 5, yPosition - 5, contentWidth + 10, totalHeight, 'S')
+
+        pdf.setFontSize(14).setTextColor(255, 127, 80).setFont('helvetica', 'bold')
+        pdf.text('Selected Perfect Hair Days', margin, yPosition)
+        yPosition += 12
+
+        pdf.setFontSize(10).setTextColor(50, 50, 50).setFont('helvetica', 'normal')
+        formData.selectedDates
+          .sort((a, b) => a.getTime() - b.getTime())
+          .forEach((date: Date, index: number) => {
+            const dateText = `${index + 1}. ${format(date, 'EEEE, MMMM d, yyyy')}`
+            pdf.text(dateText, margin, yPosition)
+            yPosition += lineHeight
+          })
+
+        yPosition += 5
+        pdf.setFontSize(9).setTextColor(100, 100, 100).setFont('helvetica', 'bold')
+        pdf.text(`Total dates selected: ${formData.selectedDates.length}`, margin, yPosition)
+      }
+
+      // ===== SAVE FILE =====
+      const fileName = `hair-analysis-${formData.firstName}-${formData.lastName}-${format(new Date(), 'yyyy-MM-dd')}.pdf`
+      pdf.save(fileName)
+
+      setMessage('PDF generated successfully!')
+    } catch (error) {
+      console.error('PDF generation error:', error)
+      setMessage('Failed to generate PDF. Please try again.')
+    } finally {
+      setIsGeneratingPDF(false)
     }
-
-    // ===== SAVE FILE =====
-    const fileName = `hair-analysis-${formData.firstName}-${formData.lastName}-${format(new Date(), 'yyyy-MM-dd')}.pdf`
-    pdf.save(fileName)
-
-    setMessage('PDF generated successfully!')
-  } catch (error) {
-    console.error('PDF generation error:', error)
-    setMessage('Failed to generate PDF. Please try again.')
-  } finally {
-    setIsGeneratingPDF(false)
   }
-}
 
 
   const handleSubmit = async () => {
@@ -510,6 +512,10 @@ const generatePDF = async () => {
         return (
           <div className="glass-card mobile-card">
             <div className="text-center mb-6">
+              <Image src={mkhLogo}
+                alt="MKH Logo"
+                className="mx-auto mb-4 w-32 h-auto"
+              />
               <h2 className="mobile-heading font-bold text-white mb-4">Tell us a little about yourself</h2>
               <p className="text-white/80 mobile-text">Duration to complete: 3 minutes</p>
             </div>
@@ -1131,6 +1137,18 @@ const generatePDF = async () => {
         <div className="max-w-4xl mx-auto mobile-section">
           {renderSlide()}
 
+          {/* Footer Logo – hidden on first slide */}
+          {/* Footer Logo – hidden on first slide */}
+          {currentSlide !== 1 && (
+            <div className="flex justify-center mt-6">
+              <Image
+                src={mkhLogo}
+                alt="MKH Logo"
+                className="w-16 h-16 opacity-80 rounded-full object-cover"
+              />
+            </div>
+          )}
+
           {/* Navigation Buttons */}
           <div className="flex sm:flex-row flex-col sm:justify-between sm:items-center sm:space-y-0 space-y-4 mt-8">
             <button
@@ -1141,12 +1159,6 @@ const generatePDF = async () => {
               ← Previous
             </button>
 
-            {/* <div className="text-center">
-              <span className="text-white/70 text-sm">
-                Step {currentSlide} of {totalSlides}
-              </span>
-            </div> */}
-
             <button
               onClick={nextSlide}
               disabled={currentSlide === totalSlides}
@@ -1156,6 +1168,7 @@ const generatePDF = async () => {
             </button>
           </div>
         </div>
+
 
         {/* Notification */}
         {message && (
